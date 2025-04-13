@@ -1,4 +1,3 @@
-
 const express = require('express');
 const parser = require('rss-parser');
 const webPush = require('web-push');
@@ -70,5 +69,37 @@ app.post('/api/feed-title', async (req, res) => {
   } catch (e) {
     console.error('Ошибка загрузки RSS:', e.message);
     res.status(500).json({ error: 'Не удалось загрузить RSS' });
+  }
+});
+app.post('/api/news/custom', async (req, res) => {
+  try {
+    const feeds = req.body.feeds;
+    if (!Array.isArray(feeds) || feeds.length === 0) {
+      return res.status(400).json({ error: 'No feeds provided' });
+    }
+
+    const allNews = [];
+
+    for (const feed of feeds) {
+      try {
+        const rssFeed = await rss.parseURL(feed.url);
+        const items = rssFeed.items.map(item => ({
+          title: item.title,
+          link: item.link,
+          pubDate: item.pubDate,
+          content: item.contentSnippet || item.content || '',
+          source: feed.source
+        }));
+        allNews.push(...items);
+      } catch (err) {
+        console.error(`Ошибка в фиде ${feed.url}:`, err.message);
+      }
+    }
+
+    allNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    res.json(allNews);
+  } catch (err) {
+    console.error('Ошибка в custom feed:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
