@@ -1,1 +1,91 @@
-const newsContainer=document.getElementById('news-container');const feedSettings=document.getElementById('feed-settings');const categorySelector=document.getElementById('category-selector');const settingsPanel=document.getElementById('settings-panel');document.getElementById('settings-button').onclick=()=>{settingsPanel.style.display=settingsPanel.style.display==='none'?'block':'none'};function getUserFeeds(){return JSON.parse(localStorage.getItem('userFeeds')||'[]')}function saveUserFeeds(e){localStorage.setItem('userFeeds',JSON.stringify(e))}function addFeed(){const e=document.getElementById('feed-url').value.trim();if(!e)return alert('Введите ссылку на RSS');fetch(e).then(e=>e.text()).then(t=>{const n=new DOMParser().parseFromString(t,'text/xml'),o=n.querySelector('channel > title')?.textContent||'Без названия',r=getUserFeeds();r.push({url:e,source:o,category:categorySelector.value}),saveUserFeeds(r),document.getElementById('feed-url').value='',fetchNews()}).catch(()=>alert('Не удалось загрузить RSS'))}function removeFeed(e){const t=getUserFeeds();t.splice(e,1),saveUserFeeds(t),fetchNews()}function renderFeedList(){const e=getUserFeeds().filter(e=>e.category===categorySelector.value);feedSettings.innerHTML=0===e.length?'<p>Нет подключённых лент</p>':e.map((e,t)=>`<div class="feed-row"><div><strong>${e.source}</strong><br><small>${e.url}</small></div><button class="danger" onclick="removeFeed(${t})">✖</button></div>`).join('')}function fetchNews(){const e=getUserFeeds().filter(e=>e.category===categorySelector.value);if(0===e.length)return renderFeedList(),void(newsContainer.innerHTML='<p>Нет новостей</p>');fetch('/api/news/custom',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({feeds:e})}).then(e=>e.json()).then(e=>{renderFeedList(),newsContainer.innerHTML=e.map(e=>`<div class="news-item"><h3>${e.title}</h3><p><strong>${e.source}</strong></p><p>${e.content}</p><small>${new Date(e.pubDate).toLocaleString()}</small></div>`).join('')})}categorySelector.addEventListener('change',fetchNews);window.addEventListener('load',()=>{fetchNews(),'serviceWorker'in navigator&&navigator.serviceWorker.register('/service-worker.js')});
+const newsContainer = document.getElementById('news-container');
+const feedSettings = document.getElementById('feed-settings');
+const categorySelector = document.getElementById('category-selector');
+const settingsPanel = document.getElementById('settings-panel');
+document.getElementById('settings-button').onclick = () => {
+  settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+};
+
+function getUserFeeds() {
+  return JSON.parse(localStorage.getItem('userFeeds') || '[]');
+}
+
+function saveUserFeeds(feeds) {
+  localStorage.setItem('userFeeds', JSON.stringify(feeds));
+}
+
+function addFeed() {
+  const url = document.getElementById('feed-url').value.trim();
+  if (!url) return alert('Введите ссылку на RSS');
+
+  fetch('/api/feed-title', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  })
+    .then(res => res.json())
+    .then(({ title }) => {
+      const feeds = getUserFeeds();
+      feeds.push({ url, source: title || "Без названия", category: categorySelector.value });
+      saveUserFeeds(feeds);
+      document.getElementById('feed-url').value = '';
+      fetchNews();
+    })
+    .catch(() => alert("Не удалось загрузить RSS"));
+}
+
+function removeFeed(index) {
+  const feeds = getUserFeeds();
+  feeds.splice(index, 1);
+  saveUserFeeds(feeds);
+  fetchNews();
+}
+
+function renderFeedList() {
+  const feeds = getUserFeeds().filter(f => f.category === categorySelector.value);
+  if (feeds.length === 0) {
+    feedSettings.innerHTML = "<p>Нет подключённых лент</p>";
+    return;
+  }
+  feedSettings.innerHTML = feeds.map((f, i) => `
+    <div class="feed-row">
+      <div><strong>${f.source}</strong><br><small>${f.url}</small></div>
+      <button class="danger" onclick="removeFeed(${i})">✖</button>
+    </div>
+  `).join('');
+}
+
+function fetchNews() {
+  const feeds = getUserFeeds().filter(f => f.category === categorySelector.value);
+  if (feeds.length === 0) {
+    renderFeedList();
+    newsContainer.innerHTML = "<p>Нет новостей</p>";
+    return;
+  }
+  fetch("/api/news/custom", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feeds })
+  })
+    .then(res => res.json())
+    .then(data => {
+      renderFeedList();
+      newsContainer.innerHTML = data.map(item => `
+        <div class="news-item">
+          <h3>${item.title}</h3>
+          <p><strong>${item.source}</strong></p>
+          <p>${item.content}</p>
+          <small>${new Date(item.pubDate).toLocaleString()}</small>
+        </div>
+      `).join('');
+    });
+}
+
+categorySelector.addEventListener('change', fetchNews);
+
+window.addEventListener('load', () => {
+  fetchNews();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js');
+  }
+});
