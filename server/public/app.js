@@ -1,50 +1,64 @@
 const newsContainer = document.getElementById('news-container');
 const feedSettings = document.getElementById('feed-settings');
-const categorySelector = document.getElementById('category-selector');
-let selectedCategory = 'default';
+
+function getUserFeeds() {
+  return JSON.parse(localStorage.getItem('userFeeds') || '[]');
+}
+
+function saveUserFeeds(feeds) {
+  localStorage.setItem('userFeeds', JSON.stringify(feeds));
+}
+
+function addFeed() {
+  const url = document.getElementById('feed-url').value.trim();
+  const name = document.getElementById('feed-name').value.trim();
+  if (!url || !name) return alert('Укажите и ссылку, и название');
+
+  const feeds = getUserFeeds();
+  feeds.push({ url, source: name });
+  saveUserFeeds(feeds);
+  document.getElementById('feed-url').value = '';
+  document.getElementById('feed-name').value = '';
+  fetchNews();
+}
+
+function renderFeedList() {
+  const feeds = getUserFeeds();
+  if (feeds.length === 0) {
+    feedSettings.innerHTML = "<p>Ленты не добавлены</p>";
+    return;
+  }
+  feedSettings.innerHTML = "<h3>Мои ленты:</h3>" + feeds.map(f => `<p><strong>${f.source}</strong><br><small>${f.url}</small></p>`).join('');
+}
 
 function fetchNews() {
-  fetch(`/api/news/${selectedCategory}`).then(res => res.json()).then(data => {
-    const savedFeeds = getSavedFeeds();
-    const sources = [...new Set(data.map(item => item.source))];
-    feedSettings.innerHTML = `
-      <h3>Выбор лент для уведомлений тест:</h3>
-      ${sources.map(src => `
-        <label>
-          <input type="checkbox" value="${src}" ${savedFeeds.includes(src) ? 'checked' : ''}>
-          ${src}
-        </label><br/>
-      `).join('')}
-      <button onclick="saveFeeds()">Сохранить</button>
-    `;
-
-    newsContainer.innerHTML = data.map(item => `
-      <div class="news-item">
-        <h3>${item.title}</h3>
-        <p><strong>${item.source}</strong></p>
-        <p>${item.content}</p>
-        <small>${new Date(item.pubDate).toLocaleString()}</small>
-      </div>
-    `).join('');
-  });
+  const feeds = getUserFeeds();
+  if (feeds.length === 0) {
+    newsContainer.innerHTML = "<p>Добавьте хотя бы одну RSS-ленту</p>";
+    return;
+  }
+  fetch("/api/news/custom", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feeds })
+  })
+    .then(res => res.json())
+    .then(data => {
+      renderFeedList();
+      newsContainer.innerHTML = data.map(item => `
+        <div class="news-item">
+          <h3>${item.title}</h3>
+          <p><strong>${item.source}</strong></p>
+          <p>${item.content}</p>
+          <small>${new Date(item.pubDate).toLocaleString()}</small>
+        </div>
+      `).join('');
+    })
+    .catch(err => {
+      console.error(err);
+      newsContainer.innerHTML = "<p>Ошибка при загрузке новостей</p>";
+    });
 }
-
-function getSavedFeeds() {
-  return JSON.parse(localStorage.getItem('feeds') || '[]');
-}
-
-function saveFeeds() {
-  const selected = [...feedSettings.querySelectorAll('input[type=checkbox]')]
-    .filter(i => i.checked)
-    .map(i => i.value);
-  localStorage.setItem('feeds', JSON.stringify(selected));
-  alert('Сохранено!');
-}
-
-categorySelector.addEventListener('change', () => {
-  selectedCategory = categorySelector.value;
-  fetchNews();
-});
 
 window.addEventListener('load', () => {
   fetchNews();

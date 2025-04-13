@@ -9,14 +9,19 @@
 </head>
 <body>
   <header>
-    <h1>📰 RSS Новости</h1>
-    <select id="category-selector">
-      <option value="default">Default</option>
-      <option value="marketing">Marketing</option>
-    </select>
+    <h1>📰 Мои RSS ленты</h1>
   </header>
-  <section id="feed-settings" class="card"></section>
+
+  <section class="card" id="add-feed-form">
+    <h3>Добавить RSS-ленту:</h3>
+    <input type="text" id="feed-url" placeholder="https://example.com/feed.xml" />
+    <input type="text" id="feed-name" placeholder="Название ленты" />
+    <button onclick="addFeed()">Добавить</button>
+  </section>
+
+  <section class="card" id="feed-settings"></section>
   <main id="news-container">Загрузка...</main>
+
   <script src="app.js"></script>
 </body>
 </html>
