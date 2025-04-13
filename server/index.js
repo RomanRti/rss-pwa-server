@@ -14,8 +14,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Настройка VAPID прямо в index.js
 webpush.setVapidDetails(
   'https://rss-pwa-server.onrender.com',
-  'BPa9OZ4A9y7AXXXXXXX-EXAMPLE-KEYXXXXX',
-  'xF6Ya1ZXXXXX-EXAMPLE-PRIVATEKEYXXXX'
+  'BMv3iLcv4eOCW3NBIHGpZpRZc5Uz39juDe1b4VLvc_6vHKrqDmS_l2GxLwR1smS_DTj3DGcsvniCkdP-v1kxghA',
+  'AFErmb8cUlnICh7CwIO5h_4Olu4rr5HZjvJ8eqUrD3U'
 );
 
 // Пример подписок в памяти
