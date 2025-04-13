@@ -54,3 +54,15 @@ app.post('/subscribe', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+app.post('/api/feed-title', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL is required' });
+
+  try {
+    const feed = await rss.parseURL(url);
+    res.json({ title: feed.title || 'Без названия' });
+  } catch (e) {
+    console.error('Ошибка загрузки RSS:', e.message);
+    res.status(500).json({ error: 'Не удалось загрузить RSS' });
+  }
+});
