@@ -6,6 +6,40 @@ document.getElementById('settings-button').onclick = () => {
   settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
 };
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = atob(base64);
+  return new Uint8Array([...rawData].map(char => char.charCodeAt(0)));
+}
+
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator)) return;
+
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    console.log("Push permission denied");
+    return;
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array("BPa9OZ4A9y7AXXXXXXX-EXAMPLE-KEYXXXXX")
+  });
+
+  await fetch('/api/save-subscription', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(subscription)
+  });
+
+  console.log("Push subscription sent to server");
+}
+
 function getUserFeeds() {
   return JSON.parse(localStorage.getItem('userFeeds') || '[]');
 }
@@ -35,9 +69,11 @@ function addFeed() {
 }
 
 function removeFeed(index) {
-  const feeds = getUserFeeds();
-  feeds.splice(index, 1);
-  saveUserFeeds(feeds);
+  const allFeeds = getUserFeeds();
+  const currentFeeds = allFeeds.filter(f => f.category === categorySelector.value);
+  const toRemove = currentFeeds[index];
+  const updated = allFeeds.filter(f => !(f.url === toRemove.url && f.category === toRemove.category));
+  saveUserFeeds(updated);
   fetchNews();
 }
 
@@ -85,6 +121,7 @@ categorySelector.addEventListener('change', fetchNews);
 
 window.addEventListener('load', () => {
   fetchNews();
+  subscribeToPush();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js');
   }
