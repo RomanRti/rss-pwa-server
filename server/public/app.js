@@ -8,7 +8,7 @@ function fetchNews() {
     const savedFeeds = getSavedFeeds();
     const sources = [...new Set(data.map(item => item.source))];
     feedSettings.innerHTML = `
-      <h3>Выбор лент для уведомлений:</h3>
+      <h3>Выбор лент для уведомлений тест:</h3>
       ${sources.map(src => `
         <label>
           <input type="checkbox" value="${src}" ${savedFeeds.includes(src) ? 'checked' : ''}>
