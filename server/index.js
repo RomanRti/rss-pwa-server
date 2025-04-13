@@ -1,48 +1,26 @@
 const express = require('express');
-const parser = require('rss-parser');
-const webPush = require('web-push');
-const vapid = require('./vapid-config');
+const cors = require('cors');
+const RSSParser = require('rss-parser');
+const webpush = require('web-push');
 const path = require('path');
-const config = require('./config');
 
 const app = express();
-const rss = new parser();
+const rss = new RSSParser();
 
-const PORT = process.env.PORT || 3000;
-const subscriptions = [];
-
-webPush.setVapidDetails(
-  config.vapidKeys.publicKey,
-  config.vapidKeys.privateKey
-);
-
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/api/news/:category', async (req, res) => {
-  const category = req.params.category || 'default';
-  const feeds = config.feeds[category];
-  if (!feeds) return res.status(400).send('Category not found');
-  try {
-    const allNews = [];
-    for (const feed of feeds) {
-      const data = await rss.parseURL(feed.url);
-      data.items.forEach(item => {
-        allNews.push({
-          title: item.title,
-          link: item.link,
-          pubDate: item.pubDate,
-          content: item.contentSnippet,
-          source: feed.source
-        });
-      });
-    }
-    allNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-    res.json(allNews);
-  } catch (e) {
-    res.status(500).send('RSS fetch error');
-  }
-});
+// Настройка VAPID прямо в index.js
+webpush.setVapidDetails(
+  'https://rss-pwa-server.onrender.com',
+  'BPa9OZ4A9y7AXXXXXXX-EXAMPLE-KEYXXXXX',
+  'xF6Ya1ZXXXXX-EXAMPLE-PRIVATEKEYXXXX'
+);
+
+// Пример подписок в памяти
+const subscriptions = [];
+
 app.post('/api/feed-title', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
@@ -56,21 +34,6 @@ app.post('/api/feed-title', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-app.post('/api/feed-title', async (req, res) => {
-  const { url } = req.body;
-  if (!url) return res.status(400).json({ error: 'URL is required' });
-
-  try {
-    const feed = await rss.parseURL(url);
-    res.json({ title: feed.title || 'Без названия' });
-  } catch (e) {
-    console.error('Ошибка загрузки RSS:', e.message);
-    res.status(500).json({ error: 'Не удалось загрузить RSS' });
-  }
-});
 app.post('/api/news/custom', async (req, res) => {
   try {
     const feeds = req.body.feeds;
@@ -103,7 +66,6 @@ app.post('/api/news/custom', async (req, res) => {
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
-let savedSubscriptions = []; // пока просто в памяти
 
 app.post('/api/save-subscription', (req, res) => {
   const subscription = req.body;
@@ -111,8 +73,36 @@ app.post('/api/save-subscription', (req, res) => {
     return res.status(400).json({ error: 'Invalid subscription' });
   }
 
-  savedSubscriptions.push(subscription);
-  console.log("✅ Сохранили подписку", subscription.endpoint);
+  subscriptions.push(subscription);
+  console.log('✅ Подписка сохранена:', subscription.endpoint);
   res.status(201).json({ success: true });
 });
 
+app.post('/api/push-test', async (req, res) => {
+  const { title, body, url } = req.body;
+
+  const payload = JSON.stringify({
+    title: title || "Новость",
+    body: body || "Это push-уведомление!",
+    url: url || "/"
+  });
+
+  const results = [];
+
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(sub, payload);
+      results.push({ endpoint: sub.endpoint, status: "ok" });
+    } catch (err) {
+      results.push({ endpoint: sub.endpoint, status: "error", error: err.message });
+    }
+  }
+
+  res.json({ sent: results.length, results });
+});
+
+// Запуск
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
+});
