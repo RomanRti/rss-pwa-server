@@ -1,6 +1,7 @@
 const express = require('express');
 const parser = require('rss-parser');
 const webPush = require('web-push');
+const vapid = require('./vapid-config');
 const path = require('path');
 const config = require('./config');
 
@@ -11,7 +12,6 @@ const PORT = process.env.PORT || 3000;
 const subscriptions = [];
 
 webPush.setVapidDetails(
-  'mailto:example@example.com',
   config.vapidKeys.publicKey,
   config.vapidKeys.privateKey
 );
