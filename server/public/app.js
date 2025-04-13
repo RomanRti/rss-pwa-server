@@ -19,7 +19,7 @@ function fetchNews() {
     `;
 
     newsContainer.innerHTML = data.map(item => `
-      <div>
+      <div class="news-item">
         <h3>${item.title}</h3>
         <p><strong>${item.source}</strong></p>
         <p>${item.content}</p>
