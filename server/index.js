@@ -44,11 +44,17 @@ app.get('/api/news/:category', async (req, res) => {
     res.status(500).send('RSS fetch error');
   }
 });
+app.post('/api/feed-title', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL is required' });
 
-app.post('/subscribe', (req, res) => {
-  const { subscription, selectedFeeds } = req.body;
-  subscriptions.push({ subscription, selectedFeeds });
-  res.status(201).json({ message: 'Subscribed' });
+  try {
+    const feed = await rss.parseURL(url);
+    res.json({ title: feed.title || 'Без названия' });
+  } catch (e) {
+    console.error('Ошибка загрузки RSS:', e.message);
+    res.status(500).json({ error: 'Не удалось загрузить RSS' });
+  }
 });
 
 app.listen(PORT, () => {
