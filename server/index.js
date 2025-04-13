@@ -103,3 +103,16 @@ app.post('/api/news/custom', async (req, res) => {
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
+let savedSubscriptions = []; // пока просто в памяти
+
+app.post('/api/save-subscription', (req, res) => {
+  const subscription = req.body;
+  if (!subscription || !subscription.endpoint) {
+    return res.status(400).json({ error: 'Invalid subscription' });
+  }
+
+  savedSubscriptions.push(subscription);
+  console.log("✅ Сохранили подписку", subscription.endpoint);
+  res.status(201).json({ success: true });
+});
+
